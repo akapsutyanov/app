@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ReelsAI</title>
+
+<!-- Telegram Web App SDK — обязательно первым -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold: #d4a843;
+  --gold-light: #f0c96a;
+  --gold-dim: rgba(212,168,67,0.12);
+  --border: rgba(212,168,67,0.2);
+  --radius: 16px;
+}
+
+/* Используем цвета темы Telegram */
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--tg-theme-bg-color, #080808);
+  color: var(--tg-theme-text-color, #f0ede6);
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.surface {
+  background: var(--tg-theme-secondary-bg-color, rgba(255,255,255,0.05));
+}
+
+/* ── BG ── */
+.bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 40% at 10% 5%, rgba(212,168,67,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 90% 95%, rgba(212,168,67,0.05) 0%, transparent 60%);
+}
+
+.app {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  min-height: 100vh; min-height: 100dvh;
+  padding-bottom: 16px;
+}
+
+/* ── HEADER ── */
+.header {
+  padding: 16px 16px 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.logo {
+  font-size: 17px; font-weight: 900; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header-sub {
+  font-size: 11px; color: var(--tg-theme-hint-color, rgba(240,237,230,0.4));
+  font-weight: 600;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; flex-direction: column; flex: 1; }
+.screen.active { display: flex; }
+
+/* ── HOME ── */
+.hero {
+  padding: 20px 16px 16px;
+  text-align: center;
+}
+.hero-icon {
+  width: 64px; height: 64px; border-radius: 20px; margin: 0 auto 14px;
+  background: linear-gradient(135deg, var(--gold), #b8891f);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px;
+  box-shadow: 0 8px 24px rgba(212,168,67,0.35);
+}
+.hero h1 {
+  font-size: 22px; font-weight: 900; letter-spacing: -0.5px;
+  line-height: 1.15; margin-bottom: 8px;
+}
+.gold { background: linear-gradient(135deg, var(--gold), var(--gold-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero p { font-size: 13px; color: var(--tg-theme-hint-color, rgba(240,237,230,0.5)); line-height: 1.55; }
+
+/* ── FORM ── */
+.form { padding: 0 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+
+.field-label {
+  font-size: 11px; font-weight: 800; color: var(--gold-light);
+  letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 7px;
+}
+
+.input-box {
+  background: var(--tg-theme-secondary-bg-color, rgba(255,255,255,0.05));
+  border: 1px solid rgba(212,168,67,0.15);
+  border-radius: var(--radius); overflow: hidden;
+  transition: border-color .2s;
+}
+.input-box:focus-within { border-color: var(--gold); }
+
+input[type=text] {
+  width: 100%; padding: 13px 14px;
+  background: transparent; border: none; outline: none;
+  color: var(--tg-theme-text-color, #f0ede6);
+  font-family: inherit; font-size: 15px;
+}
+input::placeholder { color: var(--tg-theme-hint-color, rgba(240,237,230,0.35)); }
+
+/* Chips */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 10px 12px; }
+.chip {
+  padding: 6px 13px; border-radius: 100px;
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 13px; font-weight: 600;
+  color: var(--tg-theme-hint-color, rgba(240,237,230,0.5));
+  cursor: pointer; background: transparent; font-family: inherit;
+  transition: all .15s; -webkit-tap-highlight-color: transparent;
+}
+.chip.on {
+  background: var(--gold-dim); border-color: var(--gold);
+  color: var(--gold-light);
+}
+
+/* ── MAIN BUTTON ── */
+/* Используем нативную кнопку Telegram через SDK */
+/* Но также делаем fallback кнопку */
+.gen-btn {
+  margin: 14px 16px 0;
+  width: calc(100% - 32px); padding: 16px;
+  background: linear-gradient(135deg, var(--gold), #b8891f);
+  border: none; border-radius: 16px;
+  font-family: inherit; font-size: 16px; font-weight: 800;
+  color: #080808; cursor: pointer;
+  box-shadow: 0 6px 24px rgba(212,168,67,0.35);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .1s; -webkit-tap-highlight-color: transparent;
+}
+.gen-btn:active { transform: scale(0.97); }
+.gen-btn:disabled { opacity: 0.55; }
+
+/* ── LOADING ── */
+#screen-loading {
+  align-items: center; justify-content: center; gap: 16px; padding: 40px;
+}
+.load-orb {
+  width: 72px; height: 72px; border-radius: 24px;
+  background: linear-gradient(135deg, var(--gold), #b8891f);
+  display: flex; align-items: center; justify-content: center; font-size: 34px;
+  box-shadow: 0 10px 36px rgba(212,168,67,0.4);
+  animation: orb 1.4s ease-in-out infinite;
+}
+@keyframes orb { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+.load-text { font-size: 17px; font-weight: 800; }
+.load-sub { font-size: 13px; color: var(--tg-theme-hint-color, rgba(240,237,230,0.45)); text-align: center; line-height: 1.6; }
+.dots span { animation: dot .8s infinite; }
+.dots span:nth-child(2){animation-delay:.15s}
+.dots span:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,80%,100%{opacity:.3}40%{opacity:1}}
+
+/* ── RESULTS ── */
+#screen-results { padding: 0; }
+.res-header {
+  padding: 14px 16px 12px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.back {
+  width: 34px; height: 34px; border-radius: 10px;
+  background: var(--tg-theme-secondary-bg-color, rgba(255,255,255,0.06));
+  border: none; color: var(--tg-theme-text-color, #f0ede6);
+  font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.res-title { flex: 1; }
+.res-title h2 { font-size: 16px; font-weight: 800; }
+.res-title span { font-size: 11px; color: var(--gold); }
+.regen {
+  padding: 7px 12px; border-radius: 10px;
+  background: var(--gold-dim); border: 1px solid var(--border);
+  color: var(--gold-light); font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+
+.ideas { overflow-y: auto; flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.idea {
+  background: var(--tg-theme-secondary-bg-color, rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; padding: 14px;
+  transition: border-color .2s;
+}
+.idea.copied { border-color: rgba(212,168,67,0.4); }
+.idea-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.idea-n { font-size: 10px; font-weight: 800; color: var(--gold); letter-spacing: .1em; }
+.idea-fmt {
+  font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 7px;
+  background: var(--gold-dim); border: 1px solid var(--border); color: var(--gold-light);
+}
+.idea-hook { font-size: 14px; font-weight: 800; line-height: 1.4; margin-bottom: 7px; }
+.idea-body { font-size: 12px; color: var(--tg-theme-hint-color, rgba(240,237,230,0.55)); line-height: 1.6; margin-bottom: 10px; }
+.idea-viral {
+  font-size: 11px; color: var(--tg-theme-hint-color, rgba(240,237,230,0.4));
+  padding-top: 9px; border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; gap: 5px;
+}
+.idea-btns { display: flex; gap: 7px; margin-top: 10px; }
+.ibtn {
+  flex: 1; padding: 9px; border-radius: 11px;
+  border: 1px solid rgba(255,255,255,0.08); background: transparent;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  color: var(--tg-theme-hint-color, rgba(240,237,230,0.5));
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.ibtn.gold-btn {
+  background: var(--gold-dim); border-color: var(--border); color: var(--gold-light);
+}
+.ibtn:active { opacity: 0.7; }
+
+/* Promo */
+.promo {
+  margin: 4px 0 12px;
+  background: linear-gradient(135deg, rgba(212,168,67,0.1), rgba(212,168,67,0.04));
+  border: 1px solid var(--border); border-radius: 18px;
+  padding: 18px; text-align: center;
+}
+.promo h3 { font-size: 15px; font-weight: 800; margin-bottom: 7px; }
+.promo p { font-size: 12px; color: var(--tg-theme-hint-color, rgba(240,237,230,0.5)); line-height: 1.6; margin-bottom: 12px; }
+.promo-btn {
+  display: inline-block; padding: 11px 22px;
+  background: linear-gradient(135deg, var(--gold), #b8891f);
+  border-radius: 12px; color: #080808;
+  font-family: inherit; font-size: 13px; font-weight: 800;
+  text-decoration: none; border: none; cursor: pointer;
+  box-shadow: 0 5px 18px rgba(212,168,67,0.3);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(10px);
+  background: rgba(20,18,8,0.95); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 18px;
+  font-size: 13px; font-weight: 600;
+  color: var(--tg-theme-text-color, #f0ede6);
+  opacity: 0; transition: all .25s; pointer-events: none;
+  white-space: nowrap; z-index: 999;
+  backdrop-filter: blur(16px);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">ReelsAI ✦</div>
+    <div class="header-sub">by Akapustyanov</div>
+  </div>
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div class="hero">
+      <div class="hero-icon">✨</div>
+      <h1>Идеи для<br><span class="gold">Reels за 10 сек</span></h1>
+      <p>Введи нишу — получи 7 готовых идей<br>с хуком, структурой и форматом</p>
+    </div>
+
+    <div class="form">
+      <div>
+        <div class="field-label">Твоя ниша</div>
+        <div class="input-box">
+          <input type="text" id="niche" placeholder="AI-контент, фитнес, психология..."
+            onkeydown="if(event.key==='Enter')generate()">
+        </div>
+      </div>
+
+      <div>
+        <div class="field-label">Цель роликов</div>
+        <div class="input-box">
+          <div class="chips" id="cGoal">
+            <button class="chip on" data-v="подписчики" onclick="pick(this,'cGoal')">Подписчики</button>
+            <button class="chip" data-v="продажи" onclick="pick(this,'cGoal')">Продажи</button>
+            <button class="chip" data-v="охваты" onclick="pick(this,'cGoal')">Охваты</button>
+            <button class="chip" data-v="заявки" onclick="pick(this,'cGoal')">Заявки</button>
+            <button class="chip" data-v="доверие" onclick="pick(this,'cGoal')">Доверие</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="field-label">Аудитория</div>
+        <div class="input-box">
+          <div class="chips" id="cAud">
+            <button class="chip on" data-v="новички" onclick="pick(this,'cAud')">Новички</button>
+            <button class="chip" data-v="средний уровень" onclick="pick(this,'cAud')">Средний</button>
+            <button class="chip" data-v="профессионалы" onclick="pick(this,'cAud')">Профи</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="gen-btn" id="genBtn" onclick="generate()">⚡ Сгенерировать 7 идей</button>
+  </div>
+
+  <!-- LOADING -->
+  <div class="screen" id="screen-loading">
+    <div class="load-orb">🤖</div>
+    <div class="load-text">Генерирую<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
+    <div class="load-sub">Анализирую нишу и создаю<br>вирусные концепции</div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="screen-results">
+    <div class="res-header">
+      <button class="back" onclick="show('home')">←</button>
+      <div class="res-title">
+        <h2>7 идей готовы ✦</h2>
+        <span id="resLabel"></span>
+      </div>
+      <button class="regen" onclick="generate()">↻ Ещё</button>
+    </div>
+    <div class="ideas" id="ideasList"></div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Telegram init ──
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('secondary_bg_color');
+}
+
+// ── State ──
+let ideas = [];
+let niche = '';
+
+// ── Screen nav ──
+function show(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+// ── Chip pick ──
+function pick(el, group) {
+  document.querySelectorAll(`#${group} .chip`).forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+}
+function val(group) {
+  return document.querySelector(`#${group} .chip.on`)?.dataset.v || '';
+}
+
+// ── Generate ──
+async function generate() {
+  niche = document.getElementById('niche').value.trim();
+  if (!niche) { toast('⚠️ Введи свою нишу'); document.getElementById('niche').focus(); return; }
+
+  const goal = val('cGoal');
+  const aud = val('cAud');
+
+  show('loading');
+  if (tg) tg.MainButton.hide();
+
+  const prompt = `Ты эксперт по вирусному контенту в Instagram Reels и TikTok.
+
+Создай ровно 7 уникальных идей для Reels:
+- Ниша: ${niche}
+- Цель: ${goal}
+- Аудитория: ${aud}
+
+Для каждой:
+1. hook — цепляющая фраза первых 3 секунд (конкретная)
+2. format — один из: Разоблачение / Инструкция / История / Провокация / Лайфхак / Топ-список / Кейс / Ошибки / Сравнение
+3. structure — что происходит в ролике (2 предложения)
+4. viral — одна причина виральности
+
+ТОЛЬКО JSON массив, без markdown:
+[{"hook":"...","format":"...","structure":"...","viral":"..."}]`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content.map(i => i.text || '').join('');
+    ideas = JSON.parse(text.replace(/```json|```/g, '').trim());
+    renderIdeas(goal);
+    show('results');
+  } catch(e) {
+    show('home');
+    toast('⚠️ Ошибка. Попробуй ещё раз');
+  }
+}
+
+// ── Render ──
+function renderIdeas(goal) {
+  document.getElementById('resLabel').textContent = niche + ' · ' + goal;
+  const list = document.getElementById('ideasList');
+  list.innerHTML = ideas.map((idea, i) => `
+    <div class="idea" id="i${i}">
+      <div class="idea-top">
+        <div class="idea-n">ИДЕЯ ${String(i+1).padStart(2,'0')}</div>
+        <div class="idea-fmt">${idea.format}</div>
+      </div>
+      <div class="idea-hook">"${idea.hook}"</div>
+      <div class="idea-body">${idea.structure}</div>
+      <div class="idea-viral"><span>🔥</span>${idea.viral}</div>
+      <div class="idea-btns">
+        <button class="ibtn gold-btn" onclick="copy(${i})">📋 Копировать</button>
+        <button class="ibtn" onclick="share(${i})">↗ Поделиться</button>
+      </div>
+    </div>
+  `).join('') + `
+    <div class="promo">
+      <h3>Хочешь систему?</h3>
+      <p>Узнай как превратить эти идеи в стабильные <strong style="color:var(--gold-light)">100–300К₽/мес</strong> на AI-контенте</p>
+      <button class="promo-btn" onclick="openSite()">Смотреть бесплатный урок →</button>
+    </div>
+  `;
+}
+
+// ── Actions ──
+function copy(i) {
+  const idea = ideas[i];
+  const text = `💡 ${idea.format}\n\nХук: "${idea.hook}"\n\n${idea.structure}\n\n🔥 ${idea.viral}`;
+  navigator.clipboard?.writeText(text).then(() => {
+    document.getElementById('i'+i).classList.add('copied');
+    toast('✓ Скопировано');
+    setTimeout(() => document.getElementById('i'+i)?.classList.remove('copied'), 2000);
+  }) || toast('✓ Скопировано');
+}
+
+function share(i) {
+  const idea = ideas[i];
+  const text = `💡 Идея для Reels (${idea.format})\n\n"${idea.hook}"\n\n${idea.structure}\n\nby @akapustyanov`;
+  if (navigator.share) navigator.share({ text });
+  else if (tg) tg.shareText?.(text);
+  else copy(i);
+}
+
+function openSite() {
+  if (tg) tg.openLink('https://neurocreator2.ru');
+  else window.open('https://neurocreator2.ru', '_blank');
+}
+
+// ── Toast ──
+function toast(msg) {
+  // Используем нативный Telegram haptic feedback
+  tg?.HapticFeedback?.notificationOccurred('error');
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
