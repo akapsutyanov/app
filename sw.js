@@ -1,5 +1,5 @@
 const CACHE = 'reels-ai-v1';
-const ASSETS = ['/app/', '/app/index.html', '/app/manifest.json', '/app/sw.js'];
+const ASSETS = ['./index.html', './manifest.json', './sw.js', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
