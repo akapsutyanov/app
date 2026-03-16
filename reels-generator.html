@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Генератор идей для Reels</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #d4a843;
+    --gold-light: #f0c96a;
+    --gold-dim: rgba(212,168,67,0.15);
+    --bg: #080808;
+    --surface: rgba(255,255,255,0.04);
+    --border: rgba(212,168,67,0.18);
+    --ink: #f0ede6;
+    --ink2: rgba(240,237,230,0.7);
+    --ink3: rgba(240,237,230,0.4);
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background */
+  .bg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(ellipse 80% 60% at 20% 20%, rgba(212,168,67,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 80%, rgba(212,168,67,0.05) 0%, transparent 60%);
+  }
+  .bg::after {
+    content: ''; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    opacity: 0.4;
+  }
+
+  .wrap {
+    position: relative; z-index: 1;
+    max-width: 780px; margin: 0 auto;
+    padding: 60px 24px 80px;
+  }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 48px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-radius: 100px;
+    background: rgba(212,168,67,0.1); border: 1px solid var(--border);
+    font-size: 12px; font-weight: 700; color: var(--gold-light);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 20px;
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+  h1 {
+    font-size: clamp(32px, 6vw, 56px); font-weight: 900;
+    line-height: 1.05; letter-spacing: -1.5px; margin-bottom: 14px;
+  }
+  .gold { background: linear-gradient(135deg, var(--gold), var(--gold-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .sub { font-size: 16px; color: var(--ink2); line-height: 1.6; }
+
+  /* Form card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px;
+    backdrop-filter: blur(20px);
+    margin-bottom: 24px;
+  }
+
+  .field { margin-bottom: 20px; }
+  label { display: block; font-size: 13px; font-weight: 700; color: var(--gold-light); margin-bottom: 8px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  input, select, textarea {
+    width: 100%; padding: 14px 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(212,168,67,0.2);
+    border-radius: 14px; color: var(--ink);
+    font-family: inherit; font-size: 15px;
+    transition: border-color .2s, box-shadow .2s;
+    outline: none;
+    appearance: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(212,168,67,0.12);
+  }
+  input::placeholder, textarea::placeholder { color: var(--ink3); }
+  select { cursor: pointer; }
+  select option { background: #1a1a1a; color: var(--ink); }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:560px){ .row { grid-template-columns: 1fr; } }
+
+  .btn {
+    width: 100%; padding: 18px;
+    background: linear-gradient(135deg, var(--gold), #b8891f);
+    border: none; border-radius: 16px;
+    color: #080808; font-family: inherit;
+    font-size: 17px; font-weight: 800;
+    cursor: pointer; transition: transform .15s, box-shadow .15s, opacity .15s;
+    letter-spacing: -0.3px;
+    box-shadow: 0 8px 32px rgba(212,168,67,0.3);
+    position: relative; overflow: hidden;
+  }
+  .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(212,168,67,0.4); }
+  .btn:active:not(:disabled) { transform: translateY(0); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .btn-inner { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+  /* Spinner */
+  .spinner {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2.5px solid rgba(8,8,8,0.3);
+    border-top-color: #080808;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Results */
+  .results { display: none; }
+  .results.show { display: block; animation: fadeUp .5s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+  .results-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
+  }
+  .results-title { font-size: 18px; font-weight: 800; }
+  .results-count {
+    font-size: 12px; font-weight: 700; color: var(--gold);
+    background: var(--gold-dim); border: 1px solid var(--border);
+    padding: 4px 12px; border-radius: 100px;
+  }
+
+  .idea-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .idea-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px; padding: 22px 24px;
+    transition: border-color .2s, transform .15s;
+    cursor: pointer; position: relative;
+  }
+  .idea-card:hover { border-color: rgba(212,168,67,0.4); transform: translateX(4px); }
+  .idea-card.copied { border-color: var(--gold); }
+
+  .idea-num {
+    font-size: 11px; font-weight: 800; color: var(--gold);
+    letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .copy-hint { font-size: 11px; color: var(--ink3); font-weight: 500; }
+  .copy-hint.done { color: var(--gold); }
+
+  .idea-hook { font-size: 16px; font-weight: 800; line-height: 1.4; margin-bottom: 10px; color: var(--ink); }
+
+  .idea-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tag {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 8px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    color: var(--ink3);
+  }
+  .tag.format { background: rgba(212,168,67,0.08); border-color: rgba(212,168,67,0.2); color: var(--gold-light); }
+
+  .idea-body { font-size: 13.5px; color: var(--ink2); line-height: 1.65; margin-top: 8px; }
+
+  /* Footer promo */
+  .promo {
+    margin-top: 32px; padding: 24px 28px;
+    background: linear-gradient(135deg, rgba(212,168,67,0.08), rgba(212,168,67,0.04));
+    border: 1px solid var(--border); border-radius: 20px;
+    text-align: center;
+  }
+  .promo p { font-size: 14px; color: var(--ink2); margin-bottom: 14px; line-height: 1.6; }
+  .promo-btn {
+    display: inline-block; padding: 12px 28px;
+    background: linear-gradient(135deg, var(--gold), #b8891f);
+    border-radius: 12px; color: #080808;
+    font-family: inherit; font-size: 14px; font-weight: 800;
+    text-decoration: none; transition: transform .15s, box-shadow .15s;
+    box-shadow: 0 6px 20px rgba(212,168,67,0.25);
+  }
+  .promo-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(212,168,67,0.35); }
+
+  /* Error */
+  .error-msg {
+    display: none; padding: 14px 18px;
+    background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.2);
+    border-radius: 14px; color: #ff9999; font-size: 14px; margin-bottom: 16px;
+  }
+  .error-msg.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="wrap">
+  <div class="header">
+    <div class="badge"><div class="badge-dot"></div>AI-инструмент · Бесплатно</div>
+    <h1>Генератор идей<br>для <span class="gold">Reels</span></h1>
+    <p class="sub">Введи свою нишу — получи 7 готовых идей для вирусных роликов<br>с хуком, структурой и форматом</p>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label>Твоя ниша / тема блога</label>
+      <input type="text" id="niche" placeholder="Например: фитнес, психология, юридические услуги, AI-контент..." maxlength="100">
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Цель роликов</label>
+        <select id="goal">
+          <option value="подписчики">Набрать подписчиков</option>
+          <option value="продажи">Продавать продукт/услугу</option>
+          <option value="охваты">Максимальные охваты</option>
+          <option value="доверие">Выстроить доверие</option>
+          <option value="лиды">Привлечь заявки</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Уровень аудитории</label>
+        <select id="level">
+          <option value="новички">Новички / с нуля</option>
+          <option value="средний уровень">Средний уровень</option>
+          <option value="профессионалы">Профессионалы</option>
+          <option value="любой уровень">Любой уровень</option>
+        </select>
+      </div>
+    </div>
+    <div class="error-msg" id="errorMsg">⚠️ Заполни поле «Ниша» чтобы продолжить</div>
+    <button class="btn" id="genBtn" onclick="generate()">
+      <div class="btn-inner" id="btnInner">
+        ✨ Сгенерировать 7 идей для Reels
+      </div>
+    </button>
+  </div>
+
+  <div class="results" id="results">
+    <div class="results-header">
+      <div class="results-title">Твои идеи готовы</div>
+      <div class="results-count" id="ideasCount">7 идей</div>
+    </div>
+    <div class="idea-list" id="ideaList"></div>
+    <div class="promo">
+      <p>Хочешь узнать как превратить эти идеи в систему которая приносит<br><strong>100–300К₽ в месяц на AI-контенте?</strong></p>
+      <a href="https://neurocreator2.ru" class="promo-btn" target="_blank">Смотреть бесплатный урок →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+async function generate() {
+  const niche = document.getElementById('niche').value.trim();
+  const goal = document.getElementById('goal').value;
+  const level = document.getElementById('level').value;
+  const btn = document.getElementById('genBtn');
+  const btnInner = document.getElementById('btnInner');
+  const errorMsg = document.getElementById('errorMsg');
+  const results = document.getElementById('results');
+
+  if (!niche) {
+    errorMsg.classList.add('show');
+    document.getElementById('niche').focus();
+    return;
+  }
+  errorMsg.classList.remove('show');
+
+  // Loading state
+  btn.disabled = true;
+  btnInner.innerHTML = '<div class="spinner"></div> Генерирую идеи...';
+  results.classList.remove('show');
+
+  const prompt = `Ты эксперт по созданию вирусного контента в Instagram Reels и TikTok.
+
+Создай ровно 7 уникальных идей для Reels по следующим параметрам:
+- Ниша: ${niche}
+- Цель: ${goal}
+- Уровень аудитории: ${level}
+
+Для каждой идеи укажи:
+1. Цепляющий хук (первые 3 секунды) — конкретная фраза которую говорит автор
+2. Формат ролика (один из: Разоблачение, Инструкция, История, Провокация, Лайфхак, Топ-список, Сравнение, Кейс, Ошибки)
+3. Краткая структура ролика (2-3 предложения что происходит в ролике)
+4. Почему это будет виральным (1 предложение)
+
+Отвечай СТРОГО в формате JSON массива, без markdown, без пояснений:
+[
+  {
+    "hook": "текст хука",
+    "format": "формат",
+    "structure": "структура ролика",
+    "viral": "почему будет виральным"
+  }
+]`;
+
+  try {
+    const response = await fetch("https://api.artemox.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": "sk-g938zpeWLEuPBwBIVKohyQ",
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-3-7-sonnet-latest",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const text = data.content.map(i => i.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const ideas = JSON.parse(clean);
+
+    renderIdeas(ideas, niche);
+
+  } catch (e) {
+    errorMsg.textContent = '⚠️ Ошибка генерации. Попробуй ещё раз.';
+    errorMsg.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btnInner.innerHTML = '✨ Сгенерировать ещё раз';
+  }
+}
+
+function renderIdeas(ideas, niche) {
+  const list = document.getElementById('ideaList');
+  const results = document.getElementById('results');
+  document.getElementById('ideasCount').textContent = `${ideas.length} идей · ${niche}`;
+
+  list.innerHTML = ideas.map((idea, i) => `
+    <div class="idea-card" onclick="copyIdea(this, ${i})" id="idea-${i}">
+      <div class="idea-num">
+        ИДЕЯ ${String(i+1).padStart(2,'0')}
+        <span class="copy-hint" id="copy-hint-${i}">нажми чтобы скопировать</span>
+      </div>
+      <div class="idea-hook">"${idea.hook}"</div>
+      <div class="idea-body">${idea.structure}</div>
+      <div class="idea-meta">
+        <span class="tag format">📹 ${idea.format}</span>
+        <span class="tag">🔥 ${idea.viral}</span>
+      </div>
+    </div>
+  `).join('');
+
+  results.classList.add('show');
+  results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyIdea(card, i) {
+  const hook = card.querySelector('.idea-hook').textContent;
+  const body = card.querySelector('.idea-body').textContent;
+  const format = card.querySelector('.tag.format').textContent;
+  const text = `${hook}\n\n${body}\n\n${format}`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    card.classList.add('copied');
+    const hint = document.getElementById(`copy-hint-${i}`);
+    hint.textContent = '✓ скопировано';
+    hint.classList.add('done');
+    setTimeout(() => {
+      card.classList.remove('copied');
+      hint.textContent = 'нажми чтобы скопировать';
+      hint.classList.remove('done');
+    }, 2000);
+  });
+}
+
+// Enter key
+document.getElementById('niche').addEventListener('keydown', e => {
+  if (e.key === 'Enter') generate();
+});
+</script>
+</body>
+</html>
