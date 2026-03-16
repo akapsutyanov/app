@@ -401,14 +401,16 @@ async function generate() {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1000,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4000,
         messages: [{ role: 'user', content: prompt }]
       })
     });
     const data = await res.json();
-    const text = data.content.map(i => i.text || '').join('');
-    ideas = JSON.parse(text.replace(/```json|```/g, '').trim());
+    const text = data.content[0].text;
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('JSON не найден');
+    ideas = JSON.parse(match[0]);
     renderIdeas(goal);
     show('results');
   } catch(e) {
