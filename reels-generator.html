@@ -310,21 +310,27 @@ async function generate() {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-3-7-sonnet-latest",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }]
       })
     });
 
-    const data = await response.json();
+    const raw = await response.text();
+    let data;
+    try { data = JSON.parse(raw); } catch(pe) {
+      throw new Error('Ответ не JSON: ' + raw.slice(0, 200));
+    }
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    if (!data.content) throw new Error('Нет content в ответе: ' + raw.slice(0, 200));
+
     const text = data.content.map(i => i.text || '').join('');
     const clean = text.replace(/```json|```/g, '').trim();
     const ideas = JSON.parse(clean);
-
     renderIdeas(ideas, niche);
 
   } catch (e) {
-    errorMsg.textContent = '⚠️ Ошибка генерации. Попробуй ещё раз.';
+    errorMsg.textContent = '⚠️ ' + (e.message || 'Неизвестная ошибка');
     errorMsg.classList.add('show');
   } finally {
     btn.disabled = false;
