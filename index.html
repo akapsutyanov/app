@@ -631,12 +631,13 @@ async function startGenerate() {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-3-7-sonnet-latest",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }]
       })
     });
     const data = await res.json();
+    window._lastApiResponse = JSON.stringify(data).slice(0, 300);
     const text = data.content.map(i => i.text || '').join('');
     const clean = text.replace(/```json|```/g, '').trim();
     currentIdeas = JSON.parse(clean);
@@ -652,7 +653,11 @@ async function startGenerate() {
 
   } catch(e) {
     showScreen('home');
-    showToast('⚠️ Ошибка. Попробуй ещё раз');
+    // Показываем детальную ошибку
+    const errText = e?.message || String(e);
+    showToast('⚠️ ' + errText.slice(0, 80));
+    // Также выводим в alert для отладки
+    alert('Ошибка:\n' + errText + '\n\nОтвет API:\n' + (window._lastApiResponse || 'нет'));
   }
 }
 
